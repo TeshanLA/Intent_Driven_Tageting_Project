@@ -1,0 +1,10 @@
+{
+  "session_id": "demo-session-001",
+  "page_count": 3,
+  "same_category_views": 2,
+  "categories_viewed": ["Business", "General News"],
+  "avg_scroll_depth_ratio": 0.61,
+  "avg_dwell_time_seconds": 42.5,
+  "estimated_completion_ratio": 0.48,
+  "engagement_score": 0.57
+}
