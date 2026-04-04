@@ -7,6 +7,8 @@
   --border: rgba(31, 30, 27, 0.12);
   --accent: #b55d34;
   --accent-soft: #f3d6c7;
+  --accent-deep: #7f3416;
+  --ad-bg: linear-gradient(135deg, rgba(181, 93, 52, 0.14), rgba(255, 248, 238, 0.98));
   --shadow: 0 16px 40px rgba(69, 46, 31, 0.08);
 }
 
@@ -172,24 +174,61 @@ p {
 
 .ad-slot {
   border-radius: 24px;
-  padding: 20px;
-  margin: 28px 0;
+  padding: 22px;
+  margin: 34px 0;
+  border: 1px solid rgba(127, 52, 22, 0.18);
+  border-left: 6px solid var(--accent-deep);
+  background: var(--ad-bg);
+  position: relative;
 }
 
 .ad-slot.loading {
   opacity: 0.7;
 }
 
+.ad-slot::before {
+  content: "PROMOTED";
+  position: absolute;
+  top: -12px;
+  left: 18px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-deep);
+  color: #fffaf3;
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+}
+
+.ad-slot h2 {
+  margin: 14px 0 8px;
+  font-size: 1.5rem;
+}
+
+.ad-disclosure {
+  margin: 4px 0 0;
+  max-width: 42rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
 .ad-cta {
-  display: inline-block;
-  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--accent-deep);
+  color: #fffaf3;
   font-weight: 700;
-  color: var(--accent);
+  box-shadow: 0 10px 24px rgba(127, 52, 22, 0.18);
 }
 
 .ad-debug {
   margin-top: 14px;
   font-size: 0.9rem;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(127, 52, 22, 0.18);
 }
 
 .metrics-grid {

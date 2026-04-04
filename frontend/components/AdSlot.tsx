@@ -51,6 +51,7 @@ export function AdSlot({ ad, article }: { ad: Ad | null; article: Article }) {
         <p className="sponsored-label">Sponsored Demo Ad</p>
         <span className="ad-type">{ad.type}</span>
       </div>
+      <p className="ad-disclosure">Advertisement selected for this page using session-level demo signals.</p>
       <h2>{ad.title}</h2>
       <p>{ad.description}</p>
       <a className="ad-cta" href={ad.target_url} onClick={handleClick} rel="noreferrer" target="_blank">
