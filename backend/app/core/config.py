@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./prototype.db"
     frontend_origin: str = "http://localhost:3000"
     model_dir: str = "../ml/exported_models"
-    ads_csv_path: str = "../data/ads_inventory.csv"
+    ads_csv_path: str = "../data/ads_pool.csv"
     articles_json_path: str = "../data/articles.json"
 
     model_config = SettingsConfigDict(

@@ -12,6 +12,7 @@ Build a simple end-to-end prototype where a publisher page requests a context-aw
 4. Article pages request an ad from `POST /ad/request`.
 5. Backend performs stage 1 category prediction, builds stage 2 features, ranks ads, and returns the best candidate.
 6. Dashboard aggregates the logged data into transparent publisher metrics.
+7. Candidate ads are loaded from `data/ads_pool.csv` and normalized into the internal ad format used by the API.
 
 ## Backend modules
 
