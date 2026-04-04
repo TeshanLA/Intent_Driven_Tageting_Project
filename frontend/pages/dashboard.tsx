@@ -2,14 +2,15 @@ import Head from "next/head";
 
 import { DashboardCard } from "../components/DashboardCard";
 import { Layout } from "../components/Layout";
-import { fetchDashboardSummary } from "../lib/api";
+import { fetchDashboardSummary, getEmptyDashboardSummary } from "../lib/api";
 import type { DashboardSummary } from "../lib/types";
 
 type DashboardPageProps = {
   summary: DashboardSummary;
+  backendUnavailable: boolean;
 };
 
-export default function DashboardPage({ summary }: DashboardPageProps) {
+export default function DashboardPage({ summary, backendUnavailable }: DashboardPageProps) {
   return (
     <>
       <Head>
@@ -20,6 +21,11 @@ export default function DashboardPage({ summary }: DashboardPageProps) {
           <div>
             <p className="eyebrow">Publisher Dashboard</p>
             <h1>Prototype performance summary</h1>
+            {backendUnavailable ? (
+              <p className="backend-warning">
+                Backend unavailable. Start the FastAPI server on <code>http://localhost:8000</code> and refresh.
+              </p>
+            ) : null}
           </div>
           <div className="status-badge">Inference: {summary.inference_mode}</div>
         </section>
@@ -62,6 +68,10 @@ function Leaderboard({ title, items }: { title: string; items: { label: string; 
 }
 
 export async function getServerSideProps() {
-  const summary = await fetchDashboardSummary();
-  return { props: { summary } };
+  try {
+    const summary = await fetchDashboardSummary();
+    return { props: { summary, backendUnavailable: false } };
+  } catch {
+    return { props: { summary: getEmptyDashboardSummary(), backendUnavailable: true } };
+  }
 }

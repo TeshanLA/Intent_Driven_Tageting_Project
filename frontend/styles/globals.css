@@ -57,6 +57,7 @@ p {
 
 .brand-copy,
 .empty-copy,
+.backend-warning,
 .article-excerpt,
 .hero-copy,
 .ad-debug,
@@ -73,6 +74,10 @@ p {
 
 .hero {
   padding: 26px 0 12px;
+}
+
+.backend-warning {
+  margin-top: 16px;
 }
 
 .hero h1,

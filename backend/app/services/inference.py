@@ -32,24 +32,37 @@ class InferenceService:
         self.stage1_vectorizer = None
         self.stage1_model = None
         self.stage2_model = None
+        self.label_encoder = None
+        self.behaviour_scaler = None
         self.category_mapping: dict[str, str] = {}
         self.artifact_status: dict[str, dict[str, Any]] = {}
 
     def load_artifacts(self) -> None:
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
-        vectorizer_path = self.model_dir / "stage1_vectorizer.joblib"
-        stage1_path = self.model_dir / "stage1_model.joblib"
-        stage2_path = self.model_dir / "stage2_model.joblib"
-        mapping_path = self.model_dir / "category_mapping.json"
+        vectorizer_path = self._resolve_artifact_path(["stage1_vectorizer.joblib", "stage1_vectorizer.pkl", "tfidf_vectorizer.pkl"])
+        stage1_path = self._resolve_artifact_path(["stage1_model.joblib", "stage1_model.pkl"])
+        stage2_path = self._resolve_artifact_path(
+            ["stage2_model.joblib", "stage2_model.pkl", "stage2_suitability_model_final.pkl"]
+        )
+        mapping_path = self._resolve_artifact_path(["category_mapping.json"])
+        label_encoder_path = self._resolve_artifact_path(["label_encoder.pkl", "label_encoder.joblib"])
+        behaviour_scaler_path = self._resolve_artifact_path(["behaviour_scaler.pkl", "behaviour_scaler.joblib"])
 
         self.stage1_vectorizer = None
         self.stage1_model = None
         self.stage2_model = None
+        self.label_encoder = None
+        self.behaviour_scaler = None
         self.category_mapping = {}
 
-        self._load_stage1(vectorizer_path=vectorizer_path, stage1_path=stage1_path, mapping_path=mapping_path)
-        self._load_stage2(stage2_path=stage2_path)
+        self._load_stage1(
+            vectorizer_path=vectorizer_path,
+            stage1_path=stage1_path,
+            mapping_path=mapping_path,
+            label_encoder_path=label_encoder_path,
+        )
+        self._load_stage2(stage2_path=stage2_path, behaviour_scaler_path=behaviour_scaler_path)
 
         if self.stage1_vectorizer is not None and self.stage1_model is not None and self.stage2_model is not None:
             self.mode = "real_model"
@@ -78,7 +91,7 @@ class InferenceService:
             try:
                 vectorized = self.stage1_vectorizer.transform([preprocessed["clean_text"]])
                 raw_prediction = self.stage1_model.predict(vectorized)[0]
-                predicted_category = str(self.category_mapping.get(str(raw_prediction), raw_prediction))
+                predicted_category = self._decode_stage1_prediction(raw_prediction)
                 confidence = 0.8
                 if hasattr(self.stage1_model, "predict_proba"):
                     probabilities = self.stage1_model.predict_proba(vectorized)[0]
@@ -108,7 +121,10 @@ class InferenceService:
         if self.stage2_model is not None:
             try:
                 ordered = [feature_vector[column] for column in STAGE2_FEATURE_COLUMNS]
-                score = float(self.stage2_model.predict([ordered])[0])
+                stage2_input = [ordered]
+                if self._scaler_matches_feature_shape(len(ordered)):
+                    stage2_input = self.behaviour_scaler.transform(stage2_input)
+                score = float(self.stage2_model.predict(stage2_input)[0])
                 return {"score": round(score, 4), "mode": "real_model", "ordered_features": ordered}
             except Exception as exc:
                 logger.warning("Stage 2 ranking failed. Falling back to heuristic reranking: %s", exc)
@@ -139,7 +155,14 @@ class InferenceService:
             "artifacts": self.artifact_status,
         }
 
-    def _load_stage1(self, *, vectorizer_path: Path, stage1_path: Path, mapping_path: Path) -> None:
+    def _load_stage1(
+        self,
+        *,
+        vectorizer_path: Path,
+        stage1_path: Path,
+        mapping_path: Path,
+        label_encoder_path: Path,
+    ) -> None:
         stage1_loaded = False
         vectorizer_loaded = False
 
@@ -177,8 +200,19 @@ class InferenceService:
         self.artifact_status["stage1_vectorizer"] = self._artifact_entry(vectorizer_path, vectorizer_loaded)
         self.artifact_status["stage1_model"] = self._artifact_entry(stage1_path, stage1_loaded)
         self.artifact_status["category_mapping"] = self._artifact_entry(mapping_path, mapping_loaded)
+        label_encoder_loaded = False
+        if label_encoder_path.exists():
+            try:
+                self.label_encoder = joblib.load(label_encoder_path)
+                label_encoder_loaded = True
+                logger.info("Loaded label encoder from %s", label_encoder_path)
+            except Exception as exc:
+                logger.warning("Failed to load label encoder from %s: %s", label_encoder_path, exc)
+        else:
+            logger.info("Label encoder missing at %s", label_encoder_path)
+        self.artifact_status["label_encoder"] = self._artifact_entry(label_encoder_path, label_encoder_loaded)
 
-    def _load_stage2(self, *, stage2_path: Path) -> None:
+    def _load_stage2(self, *, stage2_path: Path, behaviour_scaler_path: Path) -> None:
         stage2_loaded = False
         if stage2_path.exists():
             try:
@@ -192,8 +226,59 @@ class InferenceService:
 
         self.artifact_status["stage2_model"] = self._artifact_entry(stage2_path, stage2_loaded)
 
+        scaler_loaded = False
+        if behaviour_scaler_path.exists():
+            try:
+                self.behaviour_scaler = joblib.load(behaviour_scaler_path)
+                scaler_loaded = True
+                logger.info("Loaded behaviour scaler from %s", behaviour_scaler_path)
+            except Exception as exc:
+                logger.warning("Failed to load behaviour scaler from %s: %s", behaviour_scaler_path, exc)
+        else:
+            logger.info("Behaviour scaler missing at %s", behaviour_scaler_path)
+
+        self.artifact_status["behaviour_scaler"] = self._artifact_entry(behaviour_scaler_path, scaler_loaded)
+
     def _artifact_entry(self, path: Path, loaded: bool) -> dict[str, Any]:
         return {"path": str(path), "exists": path.exists(), "loaded": loaded}
+
+    def _resolve_artifact_path(self, candidate_names: list[str]) -> Path:
+        for name in candidate_names:
+            candidate = self.model_dir / name
+            if candidate.exists():
+                return candidate
+        return self.model_dir / candidate_names[0]
+
+    def _decode_stage1_prediction(self, raw_prediction: Any) -> str:
+        if self.category_mapping:
+            return str(self.category_mapping.get(str(raw_prediction), raw_prediction))
+
+        if self.label_encoder is not None:
+            try:
+                decoded = self.label_encoder.inverse_transform([raw_prediction])[0]
+                return str(decoded).replace("_", " ")
+            except Exception as exc:
+                logger.warning("Label encoder decode failed for %s: %s", raw_prediction, exc)
+
+        return str(raw_prediction).replace("_", " ")
+
+    def _scaler_matches_feature_shape(self, feature_count: int) -> bool:
+        if self.behaviour_scaler is None:
+            return False
+
+        expected = getattr(self.behaviour_scaler, "n_features_in_", None)
+        if expected is None:
+            return True
+
+        if int(expected) != int(feature_count):
+            logger.info(
+                "Skipping behaviour scaler because it expects %s features while the backend currently builds %s",
+                expected,
+                feature_count,
+            )
+            return False
+
+        return True
 
     def _mock_predict_category(self, article_text: str, provided_category: str | None = None) -> tuple[str, float]:
         if provided_category:

@@ -8,9 +8,10 @@ import type { Article } from "../lib/types";
 
 type HomePageProps = {
   articles: Article[];
+  backendUnavailable: boolean;
 };
 
-export default function HomePage({ articles }: HomePageProps) {
+export default function HomePage({ articles, backendUnavailable }: HomePageProps) {
   const grouped = groupArticlesByCategory(articles);
 
   return (
@@ -26,6 +27,11 @@ export default function HomePage({ articles }: HomePageProps) {
             Browse articles across categories and see how a first-party, session-level recommendation flow can work
             without persistent user identity.
           </p>
+          {backendUnavailable ? (
+            <p className="backend-warning">
+              Backend unavailable. Start the FastAPI server on <code>http://localhost:8000</code> and refresh.
+            </p>
+          ) : null}
         </section>
 
         {Object.entries(grouped).map(([category, categoryArticles]) => (
@@ -47,6 +53,10 @@ export default function HomePage({ articles }: HomePageProps) {
 }
 
 export async function getServerSideProps() {
-  const articles = await fetchArticles();
-  return { props: { articles } };
+  try {
+    const articles = await fetchArticles();
+    return { props: { articles, backendUnavailable: false } };
+  } catch {
+    return { props: { articles: [], backendUnavailable: true } };
+  }
 }
