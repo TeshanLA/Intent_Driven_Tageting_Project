@@ -33,8 +33,8 @@ export function fetchArticle(slug: string) {
   return apiFetch<Article>(`/articles/${slug}`);
 }
 
-export function fetchDashboardSummary() {
-  return apiFetch<DashboardSummary>("/dashboard/summary");
+export function fetchDashboardSummaryForSession(sessionId: string) {
+  return apiFetch<DashboardSummary>(`/dashboard/summary?session_id=${encodeURIComponent(sessionId)}`);
 }
 
 export function getEmptyDashboardSummary(): DashboardSummary {

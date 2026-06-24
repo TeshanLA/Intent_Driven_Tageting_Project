@@ -7,21 +7,33 @@ from app.models.article import Article
 from app.models.event import Event
 from app.schemas.dashboard import DashboardSummary, MetricItem
 from app.services.inference import inference_service
+from app.services.session_cleanup import purge_expired_sessions
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/summary", response_model=DashboardSummary)
-def get_dashboard_summary(db: Session = Depends(get_db)):
-    total_article_views = db.query(func.count(Event.id)).filter(Event.event_type == "page_view").scalar() or 0
-    total_ad_impressions = db.query(func.count(Event.id)).filter(Event.event_type == "ad_impression").scalar() or 0
-    total_ad_clicks = db.query(func.count(Event.id)).filter(Event.event_type == "ad_click").scalar() or 0
+def get_dashboard_summary(session_id: str, db: Session = Depends(get_db)):
+    purge_expired_sessions(db)
+
+    total_article_views = (
+        db.query(func.count(Event.id)).filter(Event.session_id == session_id, Event.event_type == "page_view").scalar() or 0
+    )
+    total_ad_impressions = (
+        db.query(func.count(Event.id))
+        .filter(Event.session_id == session_id, Event.event_type == "ad_impression")
+        .scalar()
+        or 0
+    )
+    total_ad_clicks = (
+        db.query(func.count(Event.id)).filter(Event.session_id == session_id, Event.event_type == "ad_click").scalar() or 0
+    )
     ctr = round((total_ad_clicks / total_ad_impressions) * 100, 2) if total_ad_impressions else 0.0
 
     top_articles_rows = (
         db.query(Article.title, func.count(Event.id))
         .join(Article, Article.slug == Event.article_slug)
-        .filter(Event.event_type == "page_view", Event.article_slug.isnot(None))
+        .filter(Event.session_id == session_id, Event.event_type == "page_view", Event.article_slug.isnot(None))
         .group_by(Article.title)
         .order_by(func.count(Event.id).desc())
         .limit(5)
@@ -29,7 +41,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     )
     top_ads_rows = (
         db.query(Event.ad_id, func.count(Event.id))
-        .filter(Event.event_type == "ad_impression", Event.ad_id.isnot(None))
+        .filter(Event.session_id == session_id, Event.event_type == "ad_impression", Event.ad_id.isnot(None))
         .group_by(Event.ad_id)
         .order_by(func.count(Event.id).desc())
         .limit(5)
@@ -37,7 +49,7 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     )
     top_categories_rows = (
         db.query(Event.article_category, func.count(Event.id))
-        .filter(Event.event_type == "page_view", Event.article_category.isnot(None))
+        .filter(Event.session_id == session_id, Event.event_type == "page_view", Event.article_category.isnot(None))
         .group_by(Event.article_category)
         .order_by(func.count(Event.id).desc())
         .limit(5)

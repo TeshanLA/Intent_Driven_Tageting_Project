@@ -1,16 +1,30 @@
 import Head from "next/head";
+import { useEffect, useState } from "react";
 
 import { DashboardCard } from "../components/DashboardCard";
 import { Layout } from "../components/Layout";
-import { fetchDashboardSummary, getEmptyDashboardSummary } from "../lib/api";
+import { fetchDashboardSummaryForSession, getEmptyDashboardSummary } from "../lib/api";
+import { getSessionId } from "../lib/session";
 import type { DashboardSummary } from "../lib/types";
 
-type DashboardPageProps = {
-  summary: DashboardSummary;
-  backendUnavailable: boolean;
-};
+export default function DashboardPage() {
+  const [summary, setSummary] = useState<DashboardSummary>(getEmptyDashboardSummary());
+  const [backendUnavailable, setBackendUnavailable] = useState(false);
 
-export default function DashboardPage({ summary, backendUnavailable }: DashboardPageProps) {
+  useEffect(() => {
+    const sessionId = getSessionId();
+
+    void fetchDashboardSummaryForSession(sessionId)
+      .then((nextSummary) => {
+        setSummary(nextSummary);
+        setBackendUnavailable(false);
+      })
+      .catch(() => {
+        setSummary(getEmptyDashboardSummary());
+        setBackendUnavailable(true);
+      });
+  }, []);
+
   return (
     <>
       <Head>
@@ -65,13 +79,4 @@ function Leaderboard({ title, items }: { title: string; items: { label: string; 
       )}
     </div>
   );
-}
-
-export async function getServerSideProps() {
-  try {
-    const summary = await fetchDashboardSummary();
-    return { props: { summary, backendUnavailable: false } };
-  } catch {
-    return { props: { summary: getEmptyDashboardSummary(), backendUnavailable: true } };
-  }
 }

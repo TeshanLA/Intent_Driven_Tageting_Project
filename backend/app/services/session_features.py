@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.session_summary import SessionSummary
 from app.schemas.event import EventCreate
+from app.services.session_cleanup import purge_expired_sessions
 
 
 def _safe_float(value: float | int | None) -> float:
@@ -9,6 +10,7 @@ def _safe_float(value: float | int | None) -> float:
 
 
 def update_session_summary_from_event(db: Session, payload: EventCreate) -> SessionSummary:
+    purge_expired_sessions(db)
     summary = db.query(SessionSummary).filter(SessionSummary.session_id == payload.session_id).first()
     if not summary:
         summary = SessionSummary(session_id=payload.session_id)
@@ -48,6 +50,7 @@ def update_session_summary_from_event(db: Session, payload: EventCreate) -> Sess
 
 
 def get_session_feature_snapshot(db: Session, session_id: str) -> dict:
+    purge_expired_sessions(db)
     summary = db.query(SessionSummary).filter(SessionSummary.session_id == session_id).first()
     if not summary:
         return {

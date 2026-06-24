@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-import app.models  # noqa: F401
+import app.models 
 from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.routers import ads, articles, dashboard, events, health

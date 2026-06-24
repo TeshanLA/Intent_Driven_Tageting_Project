@@ -3,7 +3,6 @@ import Head from "next/head";
 import { ArticleCard } from "../components/ArticleCard";
 import { Layout } from "../components/Layout";
 import { fetchArticles } from "../lib/api";
-import { groupArticlesByCategory } from "../lib/grouping";
 import type { Article } from "../lib/types";
 
 type HomePageProps = {
@@ -12,7 +11,7 @@ type HomePageProps = {
 };
 
 export default function HomePage({ articles, backendUnavailable }: HomePageProps) {
-  const grouped = groupArticlesByCategory(articles);
+  const mixedArticles = mixArticlesByCategory(articles);
 
   return (
     <>
@@ -34,22 +33,49 @@ export default function HomePage({ articles, backendUnavailable }: HomePageProps
           ) : null}
         </section>
 
-        {Object.entries(grouped).map(([category, categoryArticles]) => (
-          <section className="category-section" key={category}>
-            <div className="section-header">
-              <h2>{category}</h2>
-              <span>{categoryArticles.length} articles</span>
-            </div>
-            <div className="card-grid">
-              {categoryArticles.map((article) => (
-                <ArticleCard key={article.slug} article={article} />
-              ))}
-            </div>
-          </section>
-        ))}
+        <section className="category-section">
+          <div className="section-header">
+            <h2>All Articles</h2>
+            <span>{mixedArticles.length} articles</span>
+          </div>
+          <div className="card-grid">
+            {mixedArticles.map((article) => (
+              <ArticleCard key={article.slug} article={article} />
+            ))}
+          </div>
+        </section>
       </Layout>
     </>
   );
+}
+
+function mixArticlesByCategory(articles: Article[]) {
+  const buckets = new Map<string, Article[]>();
+
+  articles.forEach((article) => {
+    const categoryArticles = buckets.get(article.category) || [];
+    categoryArticles.push(article);
+    buckets.set(article.category, categoryArticles);
+  });
+
+  const mixed: Article[] = [];
+  let hasRemaining = true;
+
+  while (hasRemaining) {
+    hasRemaining = false;
+
+    for (const categoryArticles of buckets.values()) {
+      const nextArticle = categoryArticles.shift();
+      if (!nextArticle) {
+        continue;
+      }
+
+      mixed.push(nextArticle);
+      hasRemaining = true;
+    }
+  }
+
+  return mixed;
 }
 
 export async function getServerSideProps() {

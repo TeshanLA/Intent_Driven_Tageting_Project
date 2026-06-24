@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str = "sqlite:///./prototype.db"
     frontend_origin: str = "http://localhost:3000"
+    session_expiry_minutes: int = 30
     model_dir: str = "../ml/exported_models"
     ads_csv_path: str = "../data/ads_pool.csv"
     articles_json_path: str = "../data/articles.json"
