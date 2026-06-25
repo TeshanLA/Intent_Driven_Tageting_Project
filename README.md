@@ -24,6 +24,7 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 Backend will run at:
+
 - `http://localhost:8000`
 
 ### 2. Start the Frontend
@@ -36,6 +37,7 @@ npm run dev
 ```
 
 Frontend will run at:
+
 - `http://localhost:3000`
 
 ## After First-Time Setup
@@ -51,6 +53,8 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 ### Frontend
+
+If setup for the first time need to install dependencies vianpm install
 
 ```powershell
 cd frontend
