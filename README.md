@@ -54,8 +54,6 @@ uvicorn app.main:app --reload --port 8000
 
 ### Frontend
 
-If setup for the first time need to install dependencies vianpm install
-
 ```powershell
 cd frontend
 $env:NEXT_PUBLIC_API_BASE_URL="http://localhost:8000"
